@@ -3,7 +3,7 @@ package estimate
 import (
 	"testing"
 
-	"github.com/google/go-github/v56/github"
+	"github.com/google/go-github/v88/github"
 )
 
 func TestEstimateTimeToReviewCommand(t *testing.T) {

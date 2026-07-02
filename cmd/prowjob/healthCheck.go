@@ -20,7 +20,7 @@ import (
 	"k8s.io/klog/v2"
 	prowUtils "k8s.io/test-infra/prow/pod-utils/downwardapi"
 
-	"github.com/google/go-github/v56/github"
+	"github.com/google/go-github/v88/github"
 	"github.com/konflux-ci/qe-tools/pkg/status"
 )
 
