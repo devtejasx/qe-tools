@@ -29,7 +29,7 @@ require (
 	k8s.io/test-infra v0.0.0-20231026093210-34e553baa873
 	mvdan.cc/gofumpt v0.6.0
 	oras.land/oras-go/v2 v2.5.0
-	sigs.k8s.io/yaml v1.4.0
+	sigs.k8s.io/yaml v1.6.0
 )
 
 require (
@@ -142,6 +142,7 @@ require (
 	go.uber.org/atomic v1.10.0 // indirect
 	go.uber.org/multierr v1.9.0 // indirect
 	go.uber.org/zap v1.24.0 // indirect
+	go.yaml.in/yaml/v2 v2.4.2 // indirect
 	go4.org v0.0.0-20201209231011-d4a079459e60 // indirect
 	golang.org/x/crypto v0.33.0 // indirect
 	golang.org/x/exp/typeparams v0.0.0-20240213143201-ec583247a57a // indirect
