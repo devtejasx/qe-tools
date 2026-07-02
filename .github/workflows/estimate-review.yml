@@ -16,7 +16,7 @@ jobs:
           repository: 'konflux-ci/qe-tools'
 
       - name: Setup Go environment
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
 
       - name: Build qe-tools
         run: make build
