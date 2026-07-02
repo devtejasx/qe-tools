@@ -24,7 +24,7 @@ require (
 	golang.org/x/tools v0.30.0
 	google.golang.org/api v0.164.0
 	honnef.co/go/tools v0.4.7
-	k8s.io/api v0.27.4
+	k8s.io/api v0.36.2
 	k8s.io/klog/v2 v2.120.1
 	k8s.io/test-infra v0.0.0-20231026093210-34e553baa873
 	mvdan.cc/gofumpt v0.6.0
@@ -164,8 +164,8 @@ require (
 	gopkg.in/ini.v1 v1.67.2 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
-	k8s.io/apimachinery v0.27.4 // indirect
-	k8s.io/client-go v0.25.9 // indirect
+	k8s.io/apimachinery v0.36.2 // indirect
+	k8s.io/client-go v0.36.2 // indirect
 	k8s.io/kube-openapi v0.0.0-20230501164219-8b0f38b5fd1f // indirect
 	k8s.io/utils v0.0.0-20230726121419-3b25d923346b // indirect
 	knative.dev/pkg v0.0.0-20230221145627-8efb3485adcf // indirect
