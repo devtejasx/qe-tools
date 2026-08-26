@@ -168,7 +168,7 @@ func buildJUnitFromArtifacts(scanner *prow.ArtifactScanner) (*reporters.JUnitTes
 					buildLog = val.Content
 				}
 
-				if *finished.Passed {
+				if finished.Passed != nil && *finished.Passed {
 					openshiftCiJunit.TestCases = append(openshiftCiJunit.TestCases, reporters.JUnitTestCase{
 						Name: string(stepName), Status: ginkgoTypes.SpecStatePassed.String(), SystemErr: buildLog,
 					})

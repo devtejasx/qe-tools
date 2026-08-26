@@ -37,7 +37,7 @@ func removeANSIEscapeSequences(text string) string {
 
 func fetchTextContent(url string) (string, error) {
 	client := &http.Client{Timeout: 30 * time.Second}
-	resp, err := client.Get(url) // #nosec G107,G704 -- URL comes from viper config, not user input
+	resp, err := client.Get(url) // #nosec G107 -- URL comes from viper config, not user input
 	if err != nil {
 		return "", fmt.Errorf("error fetching the webpage: %w", err)
 	}
@@ -62,7 +62,9 @@ func constructMessage(bodyString string) (string, bool) {
 		message := "Test Suite Summary:\n"
 		message += extractTestResultsAndSummary(bodyString)
 		message += extractDuration(bodyString)
-		message += formatFailures(failureMatches[1])
+		if failureMatches != nil {
+			message += formatFailures(failureMatches[1])
+		}
 		return message, false
 	}
 	return "Job Succeeded", true

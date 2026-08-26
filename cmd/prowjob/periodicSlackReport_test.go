@@ -3,6 +3,7 @@ package prowjob
 import (
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 )
 
@@ -238,14 +239,25 @@ func TestFormatFailures(t *testing.T) {
 
 func TestConstructMessage(t *testing.T) {
 	tests := []struct {
-		name        string
-		body        string
-		wantSuccess bool
+		name         string
+		body         string
+		wantContains string
+		wantSuccess  bool
 	}{
 		{
 			name:        "successful job",
 			body:        "Reporting job state 'succeeded'\nall good",
 			wantSuccess: true,
+		},
+		{
+			name:         "failed job without a failure summary",
+			body:         "Reporting job state 'failed'\nno summary in this log",
+			wantContains: "Test Suite Summary:",
+		},
+		{
+			name:         "failed job with a failure summary",
+			body:         "Reporting job state 'failed'\nSummarizing 1 Failure:\n[FAIL] some spec\nTest Suite Failed",
+			wantContains: "- [FAIL] some spec",
 		},
 	}
 
@@ -257,6 +269,9 @@ func TestConstructMessage(t *testing.T) {
 			}
 			if tt.wantSuccess && msg != "Job Succeeded" {
 				t.Errorf("constructMessage() = %q, want 'Job Succeeded'", msg)
+			}
+			if tt.wantContains != "" && !strings.Contains(msg, tt.wantContains) {
+				t.Errorf("constructMessage() = %q, want it to contain %q", msg, tt.wantContains)
 			}
 		})
 	}
