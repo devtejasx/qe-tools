@@ -6,12 +6,12 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"net/http"
 	"regexp"
 	"strings"
 	"time"
 
 	"cloud.google.com/go/storage"
+	"github.com/konflux-ci/qe-tools/pkg/utils"
 	"golang.org/x/exp/slices"
 	"google.golang.org/api/iterator"
 	"google.golang.org/api/option"
@@ -227,7 +227,7 @@ func (as *ArtifactScanner) isRequiredFile(fullArtifactName string) bool {
 }
 
 func getProwJobYAML(jobID string) (*v1.ProwJob, error) {
-	r, err := http.Get(prowJobYAMLPrefix + jobID)
+	r, err := utils.NewHTTPClient().Get(prowJobYAMLPrefix + jobID)
 	errTemplate := "failed to get prow job YAML:"
 	if err != nil {
 		return nil, fmt.Errorf("%s %s", errTemplate, err)

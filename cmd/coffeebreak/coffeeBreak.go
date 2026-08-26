@@ -13,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/konflux-ci/qe-tools/pkg/utils"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -49,7 +50,7 @@ func sendMessageToLatestThread(token, channelID, message string) error {
 	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Add("Authorization", "Bearer "+token)
 
-	client := &http.Client{}
+	client := utils.NewHTTPClient()
 	resp, err := client.Do(req)
 	if err != nil {
 		return fmt.Errorf("error sending the request: %w", err)

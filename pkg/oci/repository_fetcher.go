@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+
+	"github.com/konflux-ci/qe-tools/pkg/utils"
 )
 
 // Constants for OCI API configuration
@@ -76,7 +78,7 @@ func (c *Controller) sendTagsRequest(urlStr string) (*TagResponse, error) {
 		return nil, fmt.Errorf("unsupported URL scheme %s in URL %s", parsedURL.Scheme, urlStr)
 	}
 
-	resp, err := http.Get(parsedURL.String())
+	resp, err := utils.NewHTTPClient().Get(parsedURL.String())
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch tags from URL %s: %w", urlStr, err)
 	}
