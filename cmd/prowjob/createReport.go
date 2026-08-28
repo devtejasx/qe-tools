@@ -96,8 +96,17 @@ var createReportCmd = &cobra.Command{
 			return fmt.Errorf("cannot create file '%s': %+v", generatedJunitFilepath, err)
 		}
 
-		if err := xml.NewEncoder(bufio.NewWriter(outFile)).Encode(overallJUnitSuites); err != nil {
+		junitWriter := bufio.NewWriter(outFile)
+		if err := xml.NewEncoder(junitWriter).Encode(overallJUnitSuites); err != nil {
+			outFile.Close()
 			return fmt.Errorf("cannot encode JUnit suites struct '%+v' into file located at '%s': %+v", overallJUnitSuites, generatedJunitFilepath, err)
+		}
+		if err := junitWriter.Flush(); err != nil {
+			outFile.Close()
+			return fmt.Errorf("cannot write JUnit suites into file located at '%s': %+v", generatedJunitFilepath, err)
+		}
+		if err := outFile.Close(); err != nil {
+			return fmt.Errorf("cannot close file '%s': %+v", generatedJunitFilepath, err)
 		}
 
 		html, err := convert.Convert(overallJUnitSuites)
@@ -125,8 +134,17 @@ var createReportCmd = &cobra.Command{
 				return fmt.Errorf("cannot create file '%s': %+v", generatedReportPortalFilepath, err)
 			}
 
-			if err := xml.NewEncoder(bufio.NewWriter(outRPFile)).Encode(reportPortalSuites); err != nil {
-				return fmt.Errorf("cannot encode JUnit suites struct '%+v' into file located at '%s': %+v", reportPortalSuites, generatedJunitFilepath, err)
+			rpWriter := bufio.NewWriter(outRPFile)
+			if err := xml.NewEncoder(rpWriter).Encode(reportPortalSuites); err != nil {
+				outRPFile.Close()
+				return fmt.Errorf("cannot encode JUnit suites struct '%+v' into file located at '%s': %+v", reportPortalSuites, generatedReportPortalFilepath, err)
+			}
+			if err := rpWriter.Flush(); err != nil {
+				outRPFile.Close()
+				return fmt.Errorf("cannot write JUnit suites into file located at '%s': %+v", generatedReportPortalFilepath, err)
+			}
+			if err := outRPFile.Close(); err != nil {
+				return fmt.Errorf("cannot close file '%s': %+v", generatedReportPortalFilepath, err)
 			}
 			klog.Infof("JUnit report for Report Portal saved to: %s/junit-rp.xml", artifactDir)
 		}

@@ -10,6 +10,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/konflux-ci/qe-tools/pkg/types"
 
@@ -25,6 +26,10 @@ import (
 )
 
 const (
+	// httpClientTimeout bounds the status page requests; the default
+	// http.Client has no timeout at all.
+	httpClientTimeout = 30 * time.Second
+
 	healthCheckDefaultConfigPath  = "./config/health-check/config.yaml"
 	healthCheckCmdLongDescription = `This command checks status of external services provided via config.
 The default config is located in ` + healthCheckDefaultConfigPath + `, however user can provide their own config
@@ -88,8 +93,10 @@ var healthCheckCmd = &cobra.Command{
 		hcStatus.ExternalServices = healthCheckConfig.ExternalServices
 		hcStatus.UnhealthyCriticalComponents = make(map[string][]string)
 
+		client := &http.Client{Timeout: httpClientTimeout}
+
 		for i, service := range hcStatus.ExternalServices {
-			r, err := http.Get(service.StatusPageURL)
+			r, err := client.Get(service.StatusPageURL) // #nosec G107 -- URL comes from the health check config, not user input
 			if err != nil {
 				return fmt.Errorf("failed to get service %s status page: %+v", service.Name, err)
 			}

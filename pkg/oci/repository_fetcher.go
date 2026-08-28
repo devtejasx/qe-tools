@@ -5,12 +5,17 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"time"
 )
 
 // Constants for OCI API configuration
 const (
 	quayAPITagsURL = "https://quay.io/api/v1/repository/"
 	perPageTags    = 100
+
+	// httpClientTimeout bounds every request made from this package; the
+	// default http.Client has no timeout at all.
+	httpClientTimeout = 30 * time.Second
 )
 
 // TagInfo represents a tag in a repository, including its name and the last modified date.
@@ -76,7 +81,8 @@ func (c *Controller) sendTagsRequest(urlStr string) (*TagResponse, error) {
 		return nil, fmt.Errorf("unsupported URL scheme %s in URL %s", parsedURL.Scheme, urlStr)
 	}
 
-	resp, err := http.Get(parsedURL.String())
+	client := &http.Client{Timeout: httpClientTimeout}
+	resp, err := client.Get(parsedURL.String())
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch tags from URL %s: %w", urlStr, err)
 	}

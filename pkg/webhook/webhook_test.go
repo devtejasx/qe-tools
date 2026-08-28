@@ -6,8 +6,10 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
+	"net/http/httptest"
 	"testing"
 )
 
@@ -108,14 +110,14 @@ func (m *MockRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) 
 
 func TestGoWebHookSend(t *testing.T) {
 	tests := []struct {
-		name                   string
-		hook                   *GoWebHook
-		receiverURL            string
-		mockResponse           *http.Response
-		mockError              error
-		expectedMethod         string
-		expectedSignatureValue string
-		expectError            bool
+		name                    string
+		hook                    *GoWebHook
+		mockError               error
+		expectedMethod          string
+		expectedSignatureHeader string
+		expectedSignatureValue  string
+		expectedHeaders         map[string]string
+		expectError             bool
 	}{
 		{
 			name: "POST request with default signature header",
@@ -124,13 +126,9 @@ func TestGoWebHookSend(t *testing.T) {
 				ResultingSha:    "abc123",
 				PreferredMethod: http.MethodPost,
 			},
-			receiverURL: "http://example.com/webhook",
-			mockResponse: &http.Response{
-				StatusCode: http.StatusOK,
-				Body:       io.NopCloser(bytes.NewBufferString("OK")),
-			},
-			expectedMethod:         http.MethodPost,
-			expectedSignatureValue: "abc123",
+			expectedMethod:          http.MethodPost,
+			expectedSignatureHeader: DefaultSignatureHeader,
+			expectedSignatureValue:  "abc123",
 		},
 		{
 			name: "PUT request with custom signature header",
@@ -140,13 +138,11 @@ func TestGoWebHookSend(t *testing.T) {
 				PreferredMethod: http.MethodPut,
 				SignatureHeader: "X-Custom-Signature",
 			},
-			receiverURL: "http://example.com/webhook",
-			mockResponse: &http.Response{
-				StatusCode: http.StatusOK,
-				Body:       io.NopCloser(bytes.NewBufferString("OK")),
-			},
-			expectedMethod:         http.MethodPut,
-			expectedSignatureValue: "def456",
+			expectedMethod: http.MethodPut,
+			// Send always writes the SHA under DefaultSignatureHeader; the
+			// custom header only replaces the empty SignatureHeader field.
+			expectedSignatureHeader: DefaultSignatureHeader,
+			expectedSignatureValue:  "def456",
 		},
 		{
 			name: "Invalid method falls back to POST",
@@ -155,13 +151,19 @@ func TestGoWebHookSend(t *testing.T) {
 				ResultingSha:    "ghi789",
 				PreferredMethod: "INVALID",
 			},
-			receiverURL: "http://example.com/webhook",
-			mockResponse: &http.Response{
-				StatusCode: http.StatusOK,
-				Body:       io.NopCloser(bytes.NewBufferString("OK")),
+			expectedMethod:          http.MethodPost,
+			expectedSignatureHeader: DefaultSignatureHeader,
+			expectedSignatureValue:  "ghi789",
+		},
+		{
+			name: "Empty method falls back to POST",
+			hook: &GoWebHook{
+				PreparedData: []byte(`{"resource":"test","data":"value"}`),
+				ResultingSha: "pqr678",
 			},
-			expectedMethod:         http.MethodPost,
-			expectedSignatureValue: "ghi789",
+			expectedMethod:          http.MethodPost,
+			expectedSignatureHeader: DefaultSignatureHeader,
+			expectedSignatureValue:  "pqr678",
 		},
 		{
 			name: "DELETE request",
@@ -170,13 +172,9 @@ func TestGoWebHookSend(t *testing.T) {
 				ResultingSha:    "jkl012",
 				PreferredMethod: http.MethodDelete,
 			},
-			receiverURL: "http://example.com/webhook",
-			mockResponse: &http.Response{
-				StatusCode: http.StatusNoContent,
-				Body:       io.NopCloser(bytes.NewBufferString("")),
-			},
-			expectedMethod:         http.MethodDelete,
-			expectedSignatureValue: "jkl012",
+			expectedMethod:          http.MethodDelete,
+			expectedSignatureHeader: DefaultSignatureHeader,
+			expectedSignatureValue:  "jkl012",
 		},
 		{
 			name: "Additional headers included",
@@ -188,41 +186,80 @@ func TestGoWebHookSend(t *testing.T) {
 					"X-Custom-Header": "custom-value",
 				},
 			},
-			receiverURL: "http://example.com/webhook",
-			mockResponse: &http.Response{
-				StatusCode: http.StatusOK,
-				Body:       io.NopCloser(bytes.NewBufferString("OK")),
+			expectedMethod:          http.MethodPost,
+			expectedSignatureHeader: DefaultSignatureHeader,
+			expectedSignatureValue:  "mno345",
+			expectedHeaders:         map[string]string{"X-Custom-Header": "custom-value"},
+		},
+		{
+			name: "Transport error is propagated",
+			hook: &GoWebHook{
+				PreparedData:    []byte(`{"resource":"test","data":"value"}`),
+				ResultingSha:    "stu901",
+				PreferredMethod: http.MethodPost,
 			},
-			expectedMethod:         http.MethodPost,
-			expectedSignatureValue: "mno345",
+			mockError:   errors.New("connection refused"),
+			expectError: true,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// Note: We can't easily mock http.Client.Do without modifying the source code
-			// So we'll test what we can: method validation, header setup, etc.
-			// For a real implementation, we'd need to inject the HTTP client
+			mock := &MockRoundTripper{
+				Response: &http.Response{
+					StatusCode: http.StatusOK,
+					Body:       io.NopCloser(bytes.NewBufferString("OK")),
+				},
+				Err: tt.mockError,
+			}
+			tt.hook.HTTPClient = &http.Client{Transport: mock}
 
-			// Test method normalization
-			originalMethod := tt.hook.PreferredMethod
+			resp, err := tt.hook.Send("http://example.com/webhook")
 
-			// These tests verify the method validation logic
-			switch originalMethod {
-			case http.MethodPost, http.MethodPatch, http.MethodPut, http.MethodDelete:
-				// Valid methods should remain unchanged
-			default:
-				// Invalid methods should be normalized in the actual Send call
-				// We can't test the full Send without mocking, but we can verify the logic
+			if tt.expectError {
+				if err == nil {
+					t.Fatal("expected Send to return an error")
+				}
+				if resp != nil {
+					t.Error("expected no response alongside the error")
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("Send returned an unexpected error: %v", err)
+			}
+			defer resp.Body.Close()
+
+			req := mock.ReceivedRequest
+			if req == nil {
+				t.Fatal("expected Send to issue a request")
+			}
+			if req.Method != tt.expectedMethod {
+				t.Errorf("expected method %q, got %q", tt.expectedMethod, req.Method)
+			}
+			if got := req.Header.Get(tt.expectedSignatureHeader); got != tt.expectedSignatureValue {
+				t.Errorf("expected %s %q, got %q", tt.expectedSignatureHeader, tt.expectedSignatureValue, got)
+			}
+			if got := req.Header.Get("Content-Type"); got != "application/json" {
+				t.Errorf("expected Content-Type application/json, got %q", got)
+			}
+			for name, want := range tt.expectedHeaders {
+				if got := req.Header.Get(name); got != want {
+					t.Errorf("expected header %s %q, got %q", name, want, got)
+				}
 			}
 
-			// Verify signature header default
+			body, err := io.ReadAll(req.Body)
+			if err != nil {
+				t.Fatalf("failed to read the sent body: %v", err)
+			}
+			if !bytes.Equal(body, tt.hook.PreparedData) {
+				t.Errorf("expected body %q, got %q", tt.hook.PreparedData, body)
+			}
+
+			// Send fills in the default signature header when none was given.
 			if tt.hook.SignatureHeader == "" {
-				// Should use default in Send
-				expectedHeader := DefaultSignatureHeader
-				if expectedHeader != "X-GoWebHooks-Verification" {
-					t.Errorf("unexpected default signature header")
-				}
+				t.Error("expected Send to populate SignatureHeader")
 			}
 		})
 	}
@@ -293,18 +330,22 @@ func TestWebhookCreateAndSend(t *testing.T) {
 }
 
 func TestGoWebHookSecuritySettings(t *testing.T) {
+	// With no injected client, Send builds its own and IsSecure decides
+	// whether that client verifies the server certificate. httptest.NewTLSServer
+	// presents a self-signed certificate, so an insecure hook reaches it and a
+	// secure one does not.
+	server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+
 	tests := []struct {
-		name     string
-		isSecure bool
+		name        string
+		isSecure    bool
+		expectError bool
 	}{
-		{
-			name:     "Secure mode enabled",
-			isSecure: true,
-		},
-		{
-			name:     "Secure mode disabled (default)",
-			isSecure: false,
-		},
+		{name: "Secure mode enabled rejects the self-signed certificate", isSecure: true, expectError: true},
+		{name: "Secure mode disabled (default) accepts it", isSecure: false, expectError: false},
 	}
 
 	for _, tt := range tests {
@@ -316,12 +357,21 @@ func TestGoWebHookSecuritySettings(t *testing.T) {
 				IsSecure:        tt.isSecure,
 			}
 
-			// Verify the IsSecure flag is set correctly
-			if hook.IsSecure != tt.isSecure {
-				t.Errorf("expected IsSecure %v, got %v", tt.isSecure, hook.IsSecure)
+			resp, err := hook.Send(server.URL)
+			if tt.expectError {
+				if err == nil {
+					resp.Body.Close()
+					t.Fatal("expected the certificate to be rejected")
+				}
+				return
 			}
-
-			// Note: Testing actual TLS behavior would require mocking the transport
+			if err != nil {
+				t.Fatalf("Send returned an unexpected error: %v", err)
+			}
+			defer resp.Body.Close()
+			if resp.StatusCode != http.StatusOK {
+				t.Errorf("expected status %d, got %d", http.StatusOK, resp.StatusCode)
+			}
 		})
 	}
 }
@@ -383,56 +433,5 @@ func TestDefaultSignatureHeader(t *testing.T) {
 	expected := "X-GoWebHooks-Verification"
 	if DefaultSignatureHeader != expected {
 		t.Errorf("expected DefaultSignatureHeader to be %q, got %q", expected, DefaultSignatureHeader)
-	}
-}
-
-func TestGoWebHookMethodValidation(t *testing.T) {
-	validMethods := []string{
-		http.MethodPost,
-		http.MethodPatch,
-		http.MethodPut,
-		http.MethodDelete,
-	}
-
-	invalidMethods := []string{
-		"GET",
-		"HEAD",
-		"OPTIONS",
-		"INVALID",
-		"",
-	}
-
-	for _, method := range validMethods {
-		t.Run("Valid method: "+method, func(t *testing.T) {
-			hook := &GoWebHook{
-				PreparedData:    []byte(`{"test":"data"}`),
-				ResultingSha:    "sha",
-				PreferredMethod: method,
-			}
-
-			// Valid methods should be accepted
-			if hook.PreferredMethod != method {
-				t.Errorf("expected method %q, got %q", method, hook.PreferredMethod)
-			}
-		})
-	}
-
-	for _, method := range invalidMethods {
-		t.Run("Invalid method: "+method, func(t *testing.T) {
-			// Invalid methods would be normalized to POST in the Send method
-			// We document this behavior here
-			isValid := method == http.MethodPost ||
-				method == http.MethodPatch ||
-				method == http.MethodPut ||
-				method == http.MethodDelete
-
-			if !isValid {
-				// This would fall back to POST in the Send method
-				expectedFallback := http.MethodPost
-				if expectedFallback != http.MethodPost {
-					t.Errorf("expected fallback to POST")
-				}
-			}
-		})
 	}
 }

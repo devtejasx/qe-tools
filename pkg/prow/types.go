@@ -1,6 +1,8 @@
 package prow
 
 import (
+	"time"
+
 	"cloud.google.com/go/storage"
 )
 
@@ -9,6 +11,10 @@ const (
 	reportStepName    = "redhat-appstudio-report"
 	bucketName        = "test-platform-results"
 	prowJobYAMLPrefix = "https://prow.ci.openshift.org/prowjob?prowjob="
+
+	// httpClientTimeout bounds every request made from this package; the
+	// default http.Client has no timeout at all.
+	httpClientTimeout = 30 * time.Second
 )
 
 // ArtifactScanner is used for initializing

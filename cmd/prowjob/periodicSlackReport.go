@@ -7,7 +7,6 @@ import (
 	"os"
 	"regexp"
 	"strings"
-	"time"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -36,7 +35,7 @@ func removeANSIEscapeSequences(text string) string {
 }
 
 func fetchTextContent(url string) (string, error) {
-	client := &http.Client{Timeout: 30 * time.Second}
+	client := &http.Client{Timeout: httpClientTimeout}
 	resp, err := client.Get(url) // #nosec G107,G704 -- URL comes from viper config, not user input
 	if err != nil {
 		return "", fmt.Errorf("error fetching the webpage: %w", err)
@@ -62,7 +61,11 @@ func constructMessage(bodyString string) (string, bool) {
 		message := "Test Suite Summary:\n"
 		message += extractTestResultsAndSummary(bodyString)
 		message += extractDuration(bodyString)
-		message += formatFailures(failureMatches[1])
+		// A job can report a failed state without ever printing a summary
+		// block, in which case there is nothing to index into.
+		if failureMatches != nil {
+			message += formatFailures(failureMatches[1])
+		}
 		return message, false
 	}
 	return "Job Succeeded", true

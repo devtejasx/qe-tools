@@ -227,7 +227,8 @@ func (as *ArtifactScanner) isRequiredFile(fullArtifactName string) bool {
 }
 
 func getProwJobYAML(jobID string) (*v1.ProwJob, error) {
-	r, err := http.Get(prowJobYAMLPrefix + jobID)
+	client := &http.Client{Timeout: httpClientTimeout}
+	r, err := client.Get(prowJobYAMLPrefix + jobID)
 	errTemplate := "failed to get prow job YAML:"
 	if err != nil {
 		return nil, fmt.Errorf("%s %s", errTemplate, err)

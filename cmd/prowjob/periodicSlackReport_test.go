@@ -3,6 +3,7 @@ package prowjob
 import (
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 )
 
@@ -238,14 +239,30 @@ func TestFormatFailures(t *testing.T) {
 
 func TestConstructMessage(t *testing.T) {
 	tests := []struct {
-		name        string
-		body        string
-		wantSuccess bool
+		name         string
+		body         string
+		wantSuccess  bool
+		wantContains []string
 	}{
 		{
 			name:        "successful job",
 			body:        "Reporting job state 'succeeded'\nall good",
 			wantSuccess: true,
+		},
+		{
+			// A job can report a failed state without ever printing the
+			// "Summarizing ... Test Suite Failed" block, e.g. when the
+			// failure is in cluster setup rather than in a spec.
+			name:         "failed job without a summary block",
+			body:         "Reporting job state 'failed'\nthe cluster never came up",
+			wantSuccess:  false,
+			wantContains: []string{"Test Suite Summary:"},
+		},
+		{
+			name:         "failed job with a summary block",
+			body:         "Reporting job state 'failed'\nSummarizing 1 Failure:\n[FAIL] some spec\nTest Suite Failed",
+			wantSuccess:  false,
+			wantContains: []string{"Test Suite Summary:", "[FAIL] some spec"},
 		},
 	}
 
@@ -257,6 +274,11 @@ func TestConstructMessage(t *testing.T) {
 			}
 			if tt.wantSuccess && msg != "Job Succeeded" {
 				t.Errorf("constructMessage() = %q, want 'Job Succeeded'", msg)
+			}
+			for _, want := range tt.wantContains {
+				if !strings.Contains(msg, want) {
+					t.Errorf("constructMessage() = %q, want it to contain %q", msg, want)
+				}
 			}
 		})
 	}

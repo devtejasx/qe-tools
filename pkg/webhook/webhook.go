@@ -59,6 +59,9 @@ type GoWebHook struct {
 	PreferredMethod string
 	// Additional HTTP headers to be added to the hook
 	AdditionalHeaders map[string]string
+	// HTTPClient used to send the GoWebHook. When nil, Send builds a client
+	// with a 30 second timeout, honouring IsSecure.
+	HTTPClient *http.Client
 }
 
 // GoWebHookPayload represents the data that will be sent in the GoWebHook.
@@ -103,13 +106,6 @@ func (hook *GoWebHook) Send(receiverURL string) (*http.Response, error) {
 		hook.SignatureHeader = DefaultSignatureHeader
 	}
 
-	if !hook.IsSecure {
-		// By default do not verify SSL certificate validity
-		http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{
-			InsecureSkipVerify: true, // #nosec G402
-		}
-	}
-
 	switch hook.PreferredMethod {
 	case http.MethodPost, http.MethodPatch, http.MethodPut, http.MethodDelete:
 		// Valid Methods, do nothing
@@ -118,7 +114,17 @@ func (hook *GoWebHook) Send(receiverURL string) (*http.Response, error) {
 		hook.PreferredMethod = http.MethodPost
 	}
 
-	client := &http.Client{Timeout: 30 * time.Second}
+	client := hook.HTTPClient
+	if client == nil {
+		transport := http.DefaultTransport.(*http.Transport).Clone()
+		if !hook.IsSecure {
+			// By default do not verify SSL certificate validity
+			transport.TLSClientConfig = &tls.Config{
+				InsecureSkipVerify: true, // #nosec G402
+			}
+		}
+		client = &http.Client{Timeout: 30 * time.Second, Transport: transport}
+	}
 
 	req, err := http.NewRequest(
 		hook.PreferredMethod,
