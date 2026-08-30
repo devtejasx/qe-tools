@@ -135,7 +135,6 @@ func run(cmd *cobra.Command, args []string) {
 		lastWeek = lastWeek[len(lastWeek)-6:]
 	}
 
-	// #nosec G703 -- path constructed from known config directory
 	err = os.WriteFile(filepath.Join(dirPath, "config/coffee-break/last_week.txt"), []byte(strings.Join(lastWeek, "\n")), 0o600)
 	if err != nil {
 		log.Fatalf("Error writing to last week file: %v\n", err)

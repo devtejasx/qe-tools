@@ -168,7 +168,10 @@ func buildJUnitFromArtifacts(scanner *prow.ArtifactScanner) (*reporters.JUnitTes
 					buildLog = val.Content
 				}
 
-				if *finished.Passed {
+				// finished.json may omit "passed" entirely, in which case
+				// Passed is nil; treat a missing verdict as a failure rather
+				// than dereferencing it.
+				if finished.Passed != nil && *finished.Passed {
 					openshiftCiJunit.TestCases = append(openshiftCiJunit.TestCases, reporters.JUnitTestCase{
 						Name: string(stepName), Status: ginkgoTypes.SpecStatePassed.String(), SystemErr: buildLog,
 					})

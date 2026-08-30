@@ -3,6 +3,7 @@ package prowjob
 import (
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 )
 
@@ -259,5 +260,22 @@ func TestConstructMessage(t *testing.T) {
 				t.Errorf("constructMessage() = %q, want 'Job Succeeded'", msg)
 			}
 		})
+	}
+}
+
+func TestConstructMessageFailedWithoutSummaryBlock(t *testing.T) {
+	// State is 'failed', but the log carries no "Summarizing ... Test Suite
+	// Failed" block, so the failure regexp does not match.
+	body := "Reporting job state 'failed'\nRan for 3m12s\n"
+
+	msg, success := constructMessage(body)
+	if success {
+		t.Fatalf("expected success=false for a failed job, got true")
+	}
+	if !strings.Contains(msg, "Test Suite Summary:") {
+		t.Errorf("expected a summary header, got %q", msg)
+	}
+	if !strings.Contains(msg, "No specific failures captured in the report.") {
+		t.Errorf("expected the no-failures fallback, got %q", msg)
 	}
 }

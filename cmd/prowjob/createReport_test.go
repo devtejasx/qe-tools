@@ -215,3 +215,30 @@ func TestBuildJUnitFromArtifacts_EmptyArtifacts(t *testing.T) {
 		t.Errorf("expected 1 suite (openshift-ci), got %d", len(suites.TestSuites))
 	}
 }
+
+func TestBuildJUnitFromArtifacts_MissingPassedKey(t *testing.T) {
+	// finished.json without a "passed" key leaves Finished.Passed nil.
+	scanner := &prow.ArtifactScanner{
+		ArtifactDirectoryPrefix: "logs/test-job/123/",
+		ArtifactStepMap: map[prow.ArtifactStepName]prow.ArtifactFilenameMap{
+			"e2e-tests": {
+				"finished.json": prow.Artifact{
+					Content:  `{"timestamp": 1700000000}`,
+					FullName: "logs/test-job/123/e2e-tests/finished.json",
+				},
+			},
+		},
+	}
+
+	suites, err := buildJUnitFromArtifacts(scanner)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if suites.Tests != 1 {
+		t.Errorf("expected 1 test, got %d", suites.Tests)
+	}
+	if suites.Failures != 1 {
+		t.Errorf("expected the step with no verdict to count as a failure, got %d", suites.Failures)
+	}
+}
