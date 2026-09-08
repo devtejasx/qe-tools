@@ -15,11 +15,11 @@ Three different Go versions are in play:
 
 | Location | Go Version | Source |
 |----------|-----------|--------|
-| `go.mod` | 1.21 | Module minimum compatibility |
-| CI (`test.yml`, `lint.yml`) | 1.22 | `actions/setup-go` in workflows |
+| `go.mod` | 1.23 | Module minimum compatibility |
+| CI (`test.yml`, `lint.yml`, `pre-commit.yml`) | 1.23 | `actions/setup-go` in workflows (`slack-message.yml` still pins 1.22) |
 | Dockerfile | Varies | UBI9 `go-toolset` (version depends on tag) |
 
-**Consequence**: Code may compile locally with Go 1.22 features but fail in the container if the UBI9 image ships an older Go. Stick to Go 1.21 language features unless `go.mod` is bumped.
+**Consequence**: Code may compile locally with Go 1.23 features but fail in the container if the UBI9 image ships an older Go. Stick to Go 1.23 language features unless `go.mod` is bumped.
 
 ## Quirk 2: Pre-commit Runs Full Test Suite
 

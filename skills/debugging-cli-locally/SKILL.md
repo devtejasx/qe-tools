@@ -104,5 +104,5 @@ make pre-commit
 | `panic: index out of range` | Regex `FindStringSubmatch` returned nil, code accessed `[1]` | Check `len(matches)` before indexing |
 | `GITHUB_TOKEN must be set` | Env var not exported | `export GITHUB_TOKEN="$YOUR_TOKEN"` |
 | `golangci-lint` ignores config | Config is `.golang-ci.yml` not `.golangci.yml` | Use `make lint` or `-c .golang-ci.yml` |
-| Tests pass locally, fail in CI | Go version mismatch (local 1.22, go.mod 1.21) | Avoid 1.22-only features |
+| Tests pass locally, fail in CI | Go version mismatch (local toolchain newer than `go.mod`'s 1.23) | Avoid language features newer than 1.23 |
 | `permission denied` on binary | Built binary not executable | `chmod +x qe-tools` or use `go run` |

@@ -101,7 +101,7 @@ Tests live next to source: `foo.go` -> `foo_test.go`. No external dependencies n
 
 | Workflow | Trigger | What it does |
 |----------|---------|-------------|
-| `test.yml` | PR + push to main (*.go) | `make test` on ubuntu + macOS, Go 1.22, uploads Codecov |
+| `test.yml` | PR + push to main (*.go) | `make test` on ubuntu + macOS, Go 1.23, uploads Codecov |
 | `lint.yml` | PR + push to main (*.go) | golangci-lint v1.54.2 |
 | `pre-commit.yml` | PR | All pre-commit hooks |
 | `commitlint.yml` | PR | Conventional commit message validation |
@@ -146,4 +146,4 @@ Scans GCS bucket structure for Prow job artifacts. Maps step names to artifact f
 - **Regex match safety**: Functions parsing text with regex should always validate the match result length before accessing capture group indices -- `FindStringSubmatch` returns nil on no match
 - **Fallthrough in match functions**: Functions that iterate over a set of conditions and return on the first match should handle the case where nothing matches
 - **pre-commit hooks run full test suite**: `go-test-mod` in `.pre-commit-config.yaml` runs all tests on every commit, which can be slow
-- **Go version mismatch**: `go.mod` says 1.21, CI uses 1.22, Dockerfile uses UBI9 go-toolset (Go version varies by tag)
+- **Go version mismatch**: `go.mod` says 1.23, most CI workflows use 1.23 but `slack-message.yml` still pins 1.22, Dockerfile uses UBI9 go-toolset (Go version varies by tag)
