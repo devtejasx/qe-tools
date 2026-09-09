@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"net/http"
 	"net/url"
 	"os"
 	"strconv"
@@ -22,6 +21,7 @@ import (
 
 	"github.com/google/go-github/v56/github"
 	"github.com/konflux-ci/qe-tools/pkg/status"
+	"github.com/konflux-ci/qe-tools/pkg/utils"
 )
 
 const (
@@ -87,9 +87,10 @@ var healthCheckCmd = &cobra.Command{
 		hcStatus := &HealthCheckStatus{}
 		hcStatus.ExternalServices = healthCheckConfig.ExternalServices
 		hcStatus.UnhealthyCriticalComponents = make(map[string][]string)
+		httpClient := utils.NewHTTPClient()
 
 		for i, service := range hcStatus.ExternalServices {
-			r, err := http.Get(service.StatusPageURL)
+			r, err := httpClient.Get(service.StatusPageURL)
 			if err != nil {
 				return fmt.Errorf("failed to get service %s status page: %+v", service.Name, err)
 			}
@@ -132,7 +133,7 @@ var healthCheckCmd = &cobra.Command{
 
 			if viper.GetBool(notifyOnPRParamName) {
 				prMessage := buildPRMessage(hcStatus, failIfUnhealthy)
-				githubClient := github.NewClient(http.DefaultClient).WithAuthToken(viper.GetString(types.GithubTokenEnv))
+				githubClient := github.NewClient(utils.NewHTTPClient()).WithAuthToken(viper.GetString(types.GithubTokenEnv))
 				prNumberInt, _ := strconv.Atoi(viper.GetString(prowUtils.PullNumberEnv))
 				comment, _, err := githubClient.Issues.CreateComment(
 					context.Background(),

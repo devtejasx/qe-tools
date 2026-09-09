@@ -3,14 +3,14 @@ package prowjob
 import (
 	"fmt"
 	"io"
-	"net/http"
 	"os"
 	"regexp"
 	"strings"
-	"time"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+
+	"github.com/konflux-ci/qe-tools/pkg/utils"
 )
 
 // periodicReportCmd returns the periodic-report command
@@ -36,7 +36,7 @@ func removeANSIEscapeSequences(text string) string {
 }
 
 func fetchTextContent(url string) (string, error) {
-	client := &http.Client{Timeout: 30 * time.Second}
+	client := utils.NewHTTPClient()
 	resp, err := client.Get(url) // #nosec G107,G704 -- URL comes from viper config, not user input
 	if err != nil {
 		return "", fmt.Errorf("error fetching the webpage: %w", err)
