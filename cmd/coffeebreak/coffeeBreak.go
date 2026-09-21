@@ -10,6 +10,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"time"
 
@@ -103,32 +104,16 @@ func run(cmd *cobra.Command, args []string) {
 		log.Fatalf("Error reading last week file: %v\n", err)
 	}
 
-	lastWeek := strings.Split(string(lastWeekContent), "\n")
+	lastWeek := nonEmptyLines(string(lastWeekContent))
 
 	if len(lastWeek) > 6 {
 		lastWeek = lastWeek[len(lastWeek)-6:]
 	}
 
-	lastWeekParticipants := strings.Split(lastWeek[len(lastWeek)-1], ", ")
-	var eligibleParticipants []string
-	for _, participant := range participants {
-		isInLastWeek := false
-		for _, lastWeekParticipant := range lastWeekParticipants {
-			if participant == lastWeekParticipant {
-				isInLastWeek = true
-				break
-			}
-		}
-		if !isInLastWeek {
-			eligibleParticipants = append(eligibleParticipants, participant)
-		}
+	newGroup, err := pickGroup(participants, lastWeek)
+	if err != nil {
+		log.Fatal(err)
 	}
-
-	rand.Shuffle(len(eligibleParticipants), func(i, j int) {
-		eligibleParticipants[i], eligibleParticipants[j] = eligibleParticipants[j], eligibleParticipants[i]
-	})
-
-	newGroup := eligibleParticipants[:3]
 
 	lastWeek = append(lastWeek, strings.Join(newGroup, ", "))
 	if len(lastWeek) > 6 {
@@ -147,4 +132,41 @@ func run(cmd *cobra.Command, args []string) {
 	if err != nil {
 		log.Fatalf("Error sending message to Slack: %v\n", err)
 	}
+}
+
+// nonEmptyLines splits content into trimmed lines and drops blank ones, so a
+// trailing newline or CRLF line endings in a hand-edited file do not produce
+// an empty "previous group".
+func nonEmptyLines(content string) []string {
+	var lines []string
+	for _, line := range strings.Split(content, "\n") {
+		if trimmed := strings.TrimSpace(line); trimmed != "" {
+			lines = append(lines, trimmed)
+		}
+	}
+	return lines
+}
+
+// pickGroup picks a random group of three from participants, leaving out the
+// members of the most recent group in history.
+func pickGroup(participants, history []string) ([]string, error) {
+	var lastGroup []string
+	if len(history) > 0 {
+		lastGroup = strings.Split(history[len(history)-1], ", ")
+	}
+
+	var eligible []string
+	for _, participant := range participants {
+		if !slices.Contains(lastGroup, participant) {
+			eligible = append(eligible, participant)
+		}
+	}
+	if len(eligible) < 3 {
+		return nil, fmt.Errorf("only %d participants are eligible after excluding the last group, need 3", len(eligible))
+	}
+
+	rand.Shuffle(len(eligible), func(i, j int) {
+		eligible[i], eligible[j] = eligible[j], eligible[i]
+	})
+	return eligible[:3], nil
 }
