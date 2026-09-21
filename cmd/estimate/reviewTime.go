@@ -142,14 +142,40 @@ func TimeToReview(client *github.Client, owner, repository string, number int) (
 	return result, nil
 }
 
+// listPageSize is the largest page size the GitHub REST API accepts.
+// Without it the API returns 30 items and the rest of the PR is silently ignored.
+const listPageSize = 100
+
 func countCommits(client *github.Client, owner, repository string, number int) (int, error) {
-	commits, _, err := client.PullRequests.ListCommits(context.Background(), owner, repository, number, nil)
-	return len(commits), err
+	count := 0
+	opts := &github.ListOptions{PerPage: listPageSize}
+	for {
+		commits, resp, err := client.PullRequests.ListCommits(context.Background(), owner, repository, number, opts)
+		if err != nil {
+			return 0, err
+		}
+		count += len(commits)
+		if resp.NextPage == 0 {
+			return count, nil
+		}
+		opts.Page = resp.NextPage
+	}
 }
 
 func getChangedFiles(client *github.Client, owner, repository string, number int) ([]*github.CommitFile, error) {
-	files, _, err := client.PullRequests.ListFiles(context.Background(), owner, repository, number, nil)
-	return files, err
+	var files []*github.CommitFile
+	opts := &github.ListOptions{PerPage: listPageSize}
+	for {
+		page, resp, err := client.PullRequests.ListFiles(context.Background(), owner, repository, number, opts)
+		if err != nil {
+			return nil, err
+		}
+		files = append(files, page...)
+		if resp.NextPage == 0 {
+			return files, nil
+		}
+		opts.Page = resp.NextPage
+	}
 }
 
 func getFileExtension(filename string) string {
