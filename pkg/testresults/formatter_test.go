@@ -292,6 +292,19 @@ func TestReturnTruncatedContent(t *testing.T) {
 			expectedTruncate: false,
 			expectedLength:   0,
 		},
+		{
+			// 15000 bytes but only 5000 runes: was sliced past the end and panicked.
+			name:             "Multi-byte content over 10000 bytes but under 10000 chars",
+			content:          strings.Repeat("日", 5000),
+			expectedTruncate: false,
+			expectedLength:   5000,
+		},
+		{
+			name:             "Multi-byte content over 10000 chars",
+			content:          strings.Repeat("日", 10001),
+			expectedTruncate: true,
+			expectedLength:   10000,
+		},
 	}
 
 	for _, tt := range tests {

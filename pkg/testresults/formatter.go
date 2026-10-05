@@ -2,6 +2,7 @@ package testresults
 
 import (
 	"fmt"
+	"unicode/utf8"
 )
 
 const (
@@ -70,10 +71,13 @@ func returnContentWrappedInDropdown(summary, content string) string {
 	return "<details><summary>" + summary + "</summary><br>\n<pre>" + returnTruncatedContent(content) + "</pre></details>\n\n---"
 }
 
+// returnTruncatedContent keeps the first maxContentChars characters (runes) of
+// content. The limit is counted in runes, not bytes: a log of multi-byte
+// characters can be longer than maxContentChars bytes but shorter than
+// maxContentChars runes.
 func returnTruncatedContent(content string) string {
-	if len(content) > maxContentChars {
-		runes := []rune(content)
-		truncatedRunes := runes[:maxContentChars]
+	if utf8.RuneCountInString(content) > maxContentChars {
+		truncatedRunes := []rune(content)[:maxContentChars]
 
 		return string(truncatedRunes) + "... the content is too long - please download the artifact to see the full content\n"
 	}
