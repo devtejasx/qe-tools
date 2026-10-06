@@ -3,7 +3,6 @@ package oci
 import (
 	"context"
 	"fmt"
-	"log"
 	"os"
 	"path/filepath"
 	"time"
@@ -41,23 +40,27 @@ func (c *Controller) ProcessTag(repo, tag, creationDate string) error {
 		return fmt.Errorf("failed to create output directory %s: %w", outputDir, err)
 	}
 
-	return c.ociCopy(repoRemote, tag, outputDir)
+	return c.ociCopy(ctx, repoRemote, tag, outputDir)
 }
 
-func (c *Controller) ociCopy(repo *remote.Repository, tag string, outputDir string) error {
+// ociCopy pulls the artifact's blobs into outputDir. It uses the caller's
+// context so that a stalled download is bounded by blobTimeout.
+func (c *Controller) ociCopy(ctx context.Context, repo oras.ReadOnlyTarget, tag string, outputDir string) (err error) {
 	dst, err := file.New(outputDir)
 	if err != nil {
-		log.Fatalf("Failed to create file store: %v", err)
+		return fmt.Errorf("failed to create file store: %w", err)
+	}
+	defer func() {
+		if closeErr := dst.Close(); closeErr != nil && err == nil {
+			err = fmt.Errorf("failed to close file store: %w", closeErr)
+		}
+	}()
+
+	if _, err := oras.Copy(ctx, repo, tag, dst, tag, oras.DefaultCopyOptions); err != nil {
+		return fmt.Errorf("failed to pull artifact using oras.Copy: %w", err)
 	}
 
-	defer dst.Close()
-
-	_, err = oras.Copy(context.Background(), repo, tag, dst, tag, oras.DefaultCopyOptions)
-	if err != nil {
-		return fmt.Errorf("failed to pull artifact using oras.Copy: %v", err)
-	}
-
-	return err
+	return nil
 }
 
 // Sets up the remote repository for the given repo name
