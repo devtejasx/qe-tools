@@ -16,8 +16,11 @@ func ParseRepoAndTag(repoFlag string) (string, string, error) {
 	repoFlag = strings.TrimPrefix(repoFlag, "quay.io/")
 	parts := strings.SplitN(repoFlag, ":", 2)
 
-	if len(parts) != 2 {
+	if len(parts) != 2 || parts[1] == "" {
 		return "", "", fmt.Errorf("tag is missing in the repo flag")
+	}
+	if parts[0] == "" {
+		return "", "", fmt.Errorf("repository is missing in the repo flag")
 	}
 
 	return parts[0], parts[1], nil

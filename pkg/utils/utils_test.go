@@ -51,6 +51,16 @@ func TestParseRepoAndTag(t *testing.T) {
 			repoFlag:      "quay.io/",
 			expectedError: "tag is missing",
 		},
+		{
+			name:          "Empty tag",
+			repoFlag:      "quay.io/org/repo:",
+			expectedError: "tag is missing",
+		},
+		{
+			name:          "Empty repository",
+			repoFlag:      "quay.io/:tag",
+			expectedError: "repository is missing",
+		},
 	}
 
 	for _, tt := range tests {
