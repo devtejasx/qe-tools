@@ -2,7 +2,6 @@ package oci
 
 import (
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -80,11 +79,7 @@ func (as *ArtifactScanner) processExtractedFiles() error {
 // initArtifactsFilesPathMap is  function to initialise/update the ArtifactsFilesPathMap with content
 // of a file with given file path and file name
 func (as *ArtifactScanner) initArtifactsFilesPathMap(fileName, filePath string) error {
-	file, err := os.Open(filepath.Clean(filePath))
-	if err != nil {
-		return err
-	}
-	fileData, err := io.ReadAll(file)
+	fileData, err := os.ReadFile(filepath.Clean(filePath))
 	if err != nil {
 		return err
 	}
