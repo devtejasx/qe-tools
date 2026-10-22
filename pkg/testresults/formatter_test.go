@@ -324,3 +324,36 @@ func TestReturnTruncatedContent(t *testing.T) {
 		})
 	}
 }
+
+func TestReturnContentWrappedInDropdown(t *testing.T) {
+	tests := []struct {
+		name     string
+		content  string
+		expected string
+	}{
+		{
+			name:     "plain text is kept",
+			content:  "test failed",
+			expected: "<pre>test failed</pre>",
+		},
+		{
+			name:     "Gomega type markers are escaped",
+			content:  "Expected <string>: foo to equal <string>: bar",
+			expected: "<pre>Expected &lt;string&gt;: foo to equal &lt;string&gt;: bar</pre>",
+		},
+		{
+			name:     "markup cannot close the block",
+			content:  "a & b </pre></details>",
+			expected: "<pre>a &amp; b &lt;/pre&gt;&lt;/details&gt;</pre>",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := returnContentWrappedInDropdown(dropdownSummaryString, tt.content)
+			if !strings.Contains(result, tt.expected) {
+				t.Errorf("expected %q in %q", tt.expected, result)
+			}
+		})
+	}
+}

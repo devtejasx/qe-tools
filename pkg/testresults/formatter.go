@@ -2,6 +2,7 @@ package testresults
 
 import (
 	"fmt"
+	"html"
 )
 
 const (
@@ -66,8 +67,11 @@ func GetFormattedReport(report FailedTestCasesReport) (formattedReport string) {
 	return
 }
 
+// returnContentWrappedInDropdown escapes the content, since logs and Gomega
+// failure messages ("Expected <string>: ...") contain text that GitHub would
+// otherwise read as HTML tags and drop.
 func returnContentWrappedInDropdown(summary, content string) string {
-	return "<details><summary>" + summary + "</summary><br>\n<pre>" + returnTruncatedContent(content) + "</pre></details>\n\n---"
+	return "<details><summary>" + summary + "</summary><br>\n<pre>" + html.EscapeString(returnTruncatedContent(content)) + "</pre></details>\n\n---"
 }
 
 func returnTruncatedContent(content string) string {
